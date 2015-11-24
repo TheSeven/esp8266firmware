@@ -1,0 +1,13 @@
+#pragma once
+
+#ifndef ESP8266_FLASH_SIZE
+#define ESP8266_FLASH_SIZE 0x80000
+#endif
+#ifndef ESP8266_FLASH_LOAD_SIZE
+#define ESP8266_FLASH_LOAD_SIZE 0x08000
+#endif
+#ifndef ESP8266_FLASH_DATA_SIZE
+#define ESP8266_FLASH_DATA_SIZE 0x04000
+#endif
+
+#define ICACHE_FLASH

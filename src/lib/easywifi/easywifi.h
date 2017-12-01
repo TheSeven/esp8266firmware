@@ -10,12 +10,16 @@ extern "C"
 #include "espconn.h"
 #include "gpio.h"
 #include "os_type.h"
+#include "sntp.h"
+#include "time.h"
 }
 
 #include "espmissingincludes.h"
 
 #include "lib/easywifi/telnet.h"
 #include "lib/easywifi/storage.h"
+#include "sys/util.h"
+#include "sys/time.h"
 
 
 extern void appInit();
@@ -27,4 +31,7 @@ namespace EasyWifi
                           void (*receiveCallback)(void* conn, char* data, uint16_t len));
     extern void configureOpMode();
     extern void configureStation();
+    extern void configureDNS();
+    extern void configureNTP();
+    extern void triggerNTP();
 }

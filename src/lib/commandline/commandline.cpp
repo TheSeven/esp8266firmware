@@ -112,13 +112,12 @@ void COMMANDLINE_OPTIMIZE CommandLine::Interface::helpHandler(Interface* interfa
 void COMMANDLINE_OPTIMIZE CommandLine::Interface::showSummary(Interface* interface,
                                                               const Command* command)
 {
-    int len = interface->printf("DBG     %s %s", command->command,
+    int len = interface->printf("DBG %s %s", command->command,
                                 command->hasArgs ? command->argList : "");
-    if (len > 24)
+    if (len > 20)
     {
-        interface->printf("\r\nDBG");
-        len = 3;
+        interface->printf("\r\nDBG ");
+        len = 4;
     }
-    interface->outputHandler->putString("                     ", 24 - len);
-    interface->printf(" - %s\r\n", command->helpSummary);
+    interface->printf("                 - %s\r\n" + len - 4, command->helpSummary);
 }

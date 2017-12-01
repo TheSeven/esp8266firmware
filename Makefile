@@ -111,7 +111,7 @@ _LDSCRIPT := $(LDSCRIPT:src/%.lds=build/$(TARGET)/$(TYPE)/%.lds)
 _ASMFLAGS := $(CFLAGS_GENERAL) $(CFLAGS_ASM) $(CFLAGS_$(TYPE)) $(_CFLAGS) $(_PPFLAGS) $(CFLAGS) $(ASMFLAGS)
 _CXXFLAGS := $(CFLAGS_GENERAL) $(CFLAGS_CXX) $(CFLAGS_$(TYPE)) $(_CFLAGS) $(_PPFLAGS) $(CFLAGS) $(CXXFLAGS)
 _CFLAGS := $(CFLAGS_GENERAL) $(CFLAGS_$(TYPE)) $(_CFLAGS) $(_PPFLAGS) $(CFLAGS)
-_LDFLAGS := $(LDFLAGS_GENERAL) $(LDFLAGS_$(TYPE)) $(_LDFLAGS) $(LDFLAGS) -\( $(LIBS) -\)
+_LDFLAGS := $(LDFLAGS_GENERAL) $(LDFLAGS_$(TYPE)) $(_LDFLAGS) $(LDFLAGS)
 
 define CCRULE_template
 build/$(TARGET)/$(TYPE)/%.$(1): src/%.$(2)
@@ -137,7 +137,7 @@ endif
 
 build/$(TARGET)/$(TYPE)/$(NAME).elf: $(_LDSCRIPT) $(OBJ) $(SOURCES) $(DEPS) $(COPYCTL)
 	$(VQ)echo "[LD]    " $@
-	$(Q)$(LD) -Map "$@.map" $(_LDFLAGS) -o $@ -T $(_LDSCRIPT) $(OBJ)
+	$(Q)$(LD) -Map "$@.map" $(_LDFLAGS) -o $@ -T $(_LDSCRIPT) $(OBJ) -\( $(LIBS) -\)
 ifneq ($(COPYTO),)
 	$(VQ)cp $@ $(COPYTO).elf
 	$(VQ)cp $@.map $(COPYTO).elf.map

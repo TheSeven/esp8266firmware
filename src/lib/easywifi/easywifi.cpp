@@ -28,7 +28,10 @@ void ICACHE_FLASH_ATTR EasyWifi::configureOpMode()
     bool softap = sysCfg->enableSoftAP;
     bool station = sysCfg->enableStation;
     if (wifi_station_get_connect_status() != STATION_GOT_IP) softap = true;
-    wifi_station_set_reconnect_policy(!wifi_softap_get_station_num());
+    bool softapConnected = wifi_softap_get_station_num();
+    softap |= softapConnected;
+    softap |= read_usec_timer64() < 60000000;
+    wifi_station_set_reconnect_policy(!softapConnected);
     wifi_set_opmode_current(station | (softap << 1));
 }
 
@@ -44,6 +47,28 @@ void ICACHE_FLASH_ATTR EasyWifi::configureStation()
         info.gw.addr = sysCfg->gateway;
         wifi_set_ip_info(STATION_IF, &info);
     }
+}
+
+void ICACHE_FLASH_ATTR EasyWifi::configureDNS()
+{
+    espconn_dns_setserver(0, (ip_addr_t*)&sysCfg->dns1);
+    espconn_dns_setserver(1, (ip_addr_t*)&sysCfg->dns2);
+}
+
+void ICACHE_FLASH_ATTR EasyWifi::configureNTP()
+{
+    sntp_stop();
+    sntp_set_timezone(sysCfg->timezone);
+    sntp_setserver(0, (ip_addr_t*)&sysCfg->ntp1);
+    sntp_setserver(1, (ip_addr_t*)&sysCfg->ntp2);
+    sntp_setserver(2, (ip_addr_t*)&sysCfg->ntp3);
+    sntp_init();
+}
+
+void ICACHE_FLASH_ATTR EasyWifi::triggerNTP()
+{
+    sntp_stop();
+    sntp_init();
 }
 
 static void ICACHE_FLASH_ATTR wifiEventHandler(System_Event_t* evt)
@@ -95,6 +120,8 @@ int ICACHE_FLASH_ATTR main()
     wifi_station_set_reconnect_policy(1);
     wifi_set_event_handler_cb(wifiEventHandler);
     EasyWifi::configureOpMode();
+    EasyWifi::configureDNS();
+    EasyWifi::configureNTP();
     
     EasyWifi::initTelnet();
 

@@ -36,6 +36,10 @@ static const char* connstate_str[] =
 };
 
 
+void ICACHE_FLASH_ATTR __attribute__((weak)) cmd_status_hook(CommandLine::Interface* interface)
+{
+}
+
 void ICACHE_FLASH_ATTR EasyWifi::cmd_status_handler(CommandLine::Interface* interface, char* args)
 {
     interface->printf("CHIPID %08x\r\n", system_get_chip_id());
@@ -62,6 +66,16 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_status_handler(CommandLine::Interface* inte
                    ip.netmask.addr & 0xff, (ip.netmask.addr >> 8) & 0xff,
                    (ip.netmask.addr >> 16) & 0xff, ip.netmask.addr >> 24, ip.gw.addr & 0xff,
                    (ip.gw.addr >> 8) & 0xff, (ip.gw.addr >> 16) & 0xff, ip.gw.addr >> 24);
+    interface->printf("DNSIP %d.%d.%d.%d %d.%d.%d.%d\r\n", sysCfg->dns1 & 0xff,
+                   (sysCfg->dns1 >> 8) & 0xff, (sysCfg->dns1 >> 16) & 0xff, sysCfg->dns1 >> 24,
+                   sysCfg->dns2 & 0xff, (sysCfg->dns2 >> 8) & 0xff,
+                   (sysCfg->dns2 >> 16) & 0xff, sysCfg->dns2 >> 24);
+    interface->printf("NTPIP %d.%d.%d.%d %d.%d.%d.%d %d.%d.%d.%d\r\n", sysCfg->ntp1 & 0xff,
+                   (sysCfg->ntp1 >> 8) & 0xff, (sysCfg->ntp1 >> 16) & 0xff, sysCfg->ntp1 >> 24,
+                   sysCfg->ntp2 & 0xff, (sysCfg->ntp2 >> 8) & 0xff,
+                   (sysCfg->ntp2 >> 16) & 0xff, sysCfg->ntp2 >> 24, sysCfg->ntp3 & 0xff,
+                   (sysCfg->ntp3 >> 8) & 0xff, (sysCfg->ntp3 >> 16) & 0xff, sysCfg->ntp3 >> 24);
+    interface->printf("TIMEZONE %d\r\n", sysCfg->timezone);
     wifi_get_macaddr(SOFTAP_IF, macaddr);
     interface->printf("SOFTAP %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                    macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
@@ -82,6 +96,7 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_status_handler(CommandLine::Interface* inte
         client = client->next.stqe_next;
     }
     wifi_softap_free_station_info();
+    cmd_status_hook(interface);
     interface->printf("OK\r\n");
 }
 
@@ -121,6 +136,7 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_softap_handler(CommandLine::Interface* inte
         return;
     }
     saveConfig();
+    configureOpMode();
     interface->printf("OK\r\n");
 }
 
@@ -134,7 +150,7 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_network_handler(CommandLine::Interface* int
         interface->printf("ERR Not enough arguments, please specify ESSID\r\n");
         return;
     }
-    static struct station_config stconf;
+    struct station_config stconf;
     memset(&stconf, 0, sizeof(stconf));
     os_strncpy((char*)stconf.ssid, essid, 32);
     if (password) os_strncpy((char*)stconf.password, password, 64);
@@ -167,6 +183,8 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_ip_handler(CommandLine::Interface* interfac
     char* ipaddr = StringTools::nextWord(&args);
     char* netmask = StringTools::nextWord(&args);
     char* gateway = StringTools::nextWord(&args);
+    char* dns1 = StringTools::nextWord(&args);
+    char* dns2 = StringTools::nextWord(&args);
     if (!interface->checkNoArgsLeft(&args)) return;
     if (!ipaddr || !netmask || !gateway)
     {
@@ -185,7 +203,12 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_ip_handler(CommandLine::Interface* interfac
     sysCfg->ipaddr = ip;
     sysCfg->netmask = mask;
     sysCfg->gateway = gw;
+    if (dns1 && StringTools::parseIpAddr(&ip, dns1)) sysCfg->dns1 = ip;
+    else sysCfg->dns1 = 0;
+    if (dns2 && StringTools::parseIpAddr(&ip, dns2)) sysCfg->dns2 = ip;
+    else sysCfg->dns2 = 0;
     saveConfig();
+    configureDNS();
     configureOpMode();
     configureStation();
     interface->printf("OK\r\n");
@@ -196,6 +219,60 @@ void ICACHE_FLASH_ATTR EasyWifi::cmd_dhcp_handler(CommandLine::Interface* interf
     sysCfg->enableDHCP = true;
     saveConfig();
     configureStation();
+    interface->printf("OK\r\n");
+}
+
+void ICACHE_FLASH_ATTR EasyWifi::cmd_timezone_handler(CommandLine::Interface* interface, char* args)
+{
+    char* str = StringTools::nextWord(&args);
+    if (!interface->checkNoArgsLeft(&args)) return;
+    if (!str)
+    {
+        interface->printf("ERR Not enough arguments\r\n");
+        return;
+    }
+    uint32_t offset;
+    if (!StringTools::parseInt(&offset, str))
+    {
+        interface->printf("ERR Could not parse number\r\n");
+        return;
+    }
+    sysCfg->timezone = *((char*)&offset);
+    saveConfig();
+    configureNTP();
+    interface->printf("OK\r\n");
+}
+
+void ICACHE_FLASH_ATTR EasyWifi::cmd_ntpserver_handler(CommandLine::Interface* interface, char* args)
+{
+    char* ip1 = StringTools::nextWord(&args);
+    char* ip2 = StringTools::nextWord(&args);
+    char* ip3 = StringTools::nextWord(&args);
+    if (!interface->checkNoArgsLeft(&args)) return;
+    if (!ip1)
+    {
+        interface->printf("ERR Not enough arguments\r\n");
+        return;
+    }
+    uint32_t ip;
+    if (!StringTools::parseIpAddr(&ip, ip1))
+    {
+        interface->printf("ERR Could not parse IP address\r\n");
+        return;
+    }
+    sysCfg->ntp1 = ip;
+    if (ip2 && StringTools::parseIpAddr(&ip, ip2)) sysCfg->ntp2 = ip;
+    else sysCfg->ntp2 = 0;
+    if (ip3 && StringTools::parseIpAddr(&ip, ip3)) sysCfg->ntp3 = ip;
+    else sysCfg->ntp3 = 0;
+    saveConfig();
+    configureNTP();
+    interface->printf("OK\r\n");
+}
+
+void ICACHE_FLASH_ATTR EasyWifi::cmd_ntpsync_handler(CommandLine::Interface* interface, char* args)
+{
+    triggerNTP();
     interface->printf("OK\r\n");
 }
 

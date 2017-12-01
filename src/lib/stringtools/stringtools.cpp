@@ -18,6 +18,12 @@ char* STRINGTOOLS_OPTIMIZE StringTools::nextWord(char** data)
 bool STRINGTOOLS_OPTIMIZE StringTools::parseInt(uint32_t* out, char* str)
 {
     *out = 0;
+    bool negate = false;
+    if (*str == '-')
+    {
+        str++;
+        negate = true;
+    }
     if (*str == '0' && (*++str & ~0x20) == 'X')
     {
         str++;
@@ -27,17 +33,22 @@ bool STRINGTOOLS_OPTIMIZE StringTools::parseInt(uint32_t* out, char* str)
             char x = c & ~0x20;
             if (c >= '0' && c <= '9') *out = (*out << 4) | (c - '0');
             else if (x >= 'A' && x <= 'F') *out = (*out << 4) | (x - 'A' + 10);
-            else if (!c) return true;
+            else if (!c) break;
             else return false;
         }
     }
-    while (true)
+    else
     {
-        char c = *str++;
-        if (c >= '0' && c <= '9') *out = *out * 10 + c - '0';
-        else if (!c) return true;
-        else return false;
+        while (true)
+        {
+            char c = *str++;
+            if (c >= '0' && c <= '9') *out = *out * 10 + c - '0';
+            else if (!c) break;
+            else return false;
+        }
     }
+    if (negate) *out = (uint32_t)(-((int)*out));
+    return true;
 }
 
 bool STRINGTOOLS_OPTIMIZE StringTools::parseIpAddr(uint32_t* ip, char* str)
@@ -57,4 +68,27 @@ bool STRINGTOOLS_OPTIMIZE StringTools::parseIpAddr(uint32_t* ip, char* str)
         *ip |= byte << (8 * i);
     }
     return true;
+}
+
+int STRINGTOOLS_OPTIMIZE StringTools::parseHexStr(uint8_t* out, char* str)
+{
+    int len = 0;
+    while (true)
+    {
+        uint8_t byte;
+        char c = *str++;
+        char x = c & ~0x20;
+        if (!c) break;
+        else if (c >= '0' && c <= '9') byte = (c - '0') << 4;
+        else if (x >= 'A' && x <= 'F') byte = (x - 'A' + 10) << 4;
+        else return false;
+        c = *str++;
+        x = c & ~0x20;
+        if (c >= '0' && c <= '9') byte |= c - '0';
+        else if (x >= 'A' && x <= 'F') byte |= x - 'A' + 10;
+        else return false;
+        *out++ = byte;
+        len++;
+    }
+    return len;
 }

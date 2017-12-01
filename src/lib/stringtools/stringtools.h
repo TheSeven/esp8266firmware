@@ -13,4 +13,5 @@ namespace StringTools
     char* nextWord(char** data);
     bool parseInt(uint32_t* out, char* str);
     bool parseIpAddr(uint32_t* ip, char* str);
+    int parseHexStr(uint8_t* out, char* str);
 }

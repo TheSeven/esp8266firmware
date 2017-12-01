@@ -11,9 +11,15 @@ static const SysConfig defaultSysConfig =
     enableSoftAP: true,
     enableStation: true,
     enableDHCP: true,
-	ipaddr: 0,
-	netmask: 0,
-	gateway: 0,
+    timezone: 0,
+    ipaddr: 0,
+    netmask: 0,
+    gateway: 0,
+    dns1: 0,
+    dns2: 0,
+    ntp1: 0,
+    ntp2: 0,
+    ntp3: 0,
 };
 
 static StoragePartition configPart(&ESP8266::Flash,
